@@ -79,21 +79,23 @@ private:
 
 
 int main(){
+  const int max_thread_numbers=std::thread::hardware_concurrency();
   int thread_count,task_size; //=std::thread::hardware_concurrency();
+  std::cout<<"cpu support threads number : "<<max_thread_numbers<<std::endl;
   std::cout<<"threads number : ";
   std::cin>>thread_count;
-  std::cout<<std::endl<<"task size : ";
+  std::cout<<"task size : ";
   std::cin>>task_size;
   std::cout<<std::endl;
 
   std::string output_data="";
   ThreadPool pool(thread_count);
-  output_data+="====================================";
+  output_data+="==============================================";
   output_data+='\n';
   output_data+=" initialize threadpool with : ";
   output_data+= std::to_string(thread_count);
   output_data+=" threads";
-  output_data+='\n'; 
+  output_data+='\n';
   output_data+=" task size : ";
   output_data+= std::to_string(task_size);
   output_data+='\n';
@@ -119,7 +121,7 @@ int main(){
   output_data+='\n';
   output_data+=" exit";
   output_data+='\n';
-  output_data+="====================================";
+  output_data+="==============================================";
   output_data+='\n';
   std::cout<<output_data;
 }
