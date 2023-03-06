@@ -1,0 +1,13 @@
+The error message is related to the C++ program's ThreadPool.cpp file, specifically to the enqueue() function template.
+
+The first error message is "invalid use of incomplete type 'using element_type = class std::packaged_task<int>'".
+This means that the program is trying to use the type std::packaged_task<int> without its definition being available.
+
+The second error message is "no match for call to '(std::__shared_ptr_access<std::packaged_task<int>, __gnu_cxx::_S_atomic, false, false>::element_type {aka std::packaged_task<int>}) ()'".
+This means that the program is trying to call a function on an object of type std::packaged_task<int>, but that function is not defined for that type.
+
+The third error message is "invalid application of 'sizeof' to incomplete type 'std::packaged_task<int>'". This means that the program is trying to use the sizeof 
+operator on an object of type std::packaged_task<int>, but that type is not fully defined.
+
+All of these errors suggest that the program is trying to use std::packaged_task<int> before its definition is available. To fix this, you should include the header file <future> 
+in the ThreadPool.cpp file.
