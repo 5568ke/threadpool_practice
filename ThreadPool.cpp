@@ -46,33 +46,7 @@ public:
 private:
     using Task = std::function<void()>;
 
-    // void work(size_t index) {
-    //     moodycamel::ConsumerToken token(queues_[index]);
-    //     while (true) {
-    //         Task task;
-    //         if (queues_[index].try_dequeue(token, task)) {
-    //             if (!task) {
-    //                 break;
-    //             }
-    //             task();
-    //         }
-    //         else {
-    //             // bug : job stealing now cause std::terminate()
-
-    //             // Steal task from other queues
-    //             // for (size_t i = 0; i < queues_.size(); ++i) {
-    //             //     if (i != index && queues_[i].try_dequeue(task)) {
-    //             //         task();
-    //             //         break;
-    //             //     }
-    //             // }
-    //     
-    //             // Sleep for a while to avoid spinning
-    //             std::this_thread::yield();
-    //         }
-    //     }
-    // }
-   void work(size_t index) {
+    void work(size_t index) {
         moodycamel::ConsumerToken token(queues_[index]);
         int steal_count = 0;
         while (true) {
@@ -81,7 +55,6 @@ private:
                 if (!task) {
                     break;
                 }
-                std::cout<<"do my own job"<<std::endl;
                 task();
                 steal_count = 0; 
             }
@@ -92,7 +65,6 @@ private:
                 for (size_t i = 1; i < queues_.size() && !stolen; ++i) {
                     Task stolen_task;
                     if (queues_[(index + i) % queues_.size()].try_dequeue(stolen_task)) {
-                        std::cout<<"steal job success"<<std::endl;
                         // steal success -> run
                          stolen_task();
                          stolen = true;
@@ -102,7 +74,6 @@ private:
                 if (!stolen) {
                     ++steal_count;
                     if (steal_count > 1000) { 
-                        std::cout<<"can't steal job"<<std::endl;
                         // can't steal job -> sleep
                         std::this_thread::yield();
                         steal_count = 0; 
