@@ -1,18 +1,48 @@
+#include <mutex>
 #include <thread>
+#include <deque>
 #include <type_traits>
 #include <chrono>
 #include <string>
 #include <iostream>
 #include <vector>
 #include <functional>
-#include <concurrentqueue.h>
+#include <condition_variable>
 #include <future>
+
+template<typename T>
+class Queue{
+  std::deque<T> d_;
+  std::mutex m_;
+  std::atomic<bool> is_closed_{false};
+  std::condition_variable cond_;
+public:
+  void Enqueue(T&& value){
+    std::unique_lock lk(m_);
+    d_.push_back(std::move(value));
+    cond_.notify_one();
+  }
+  bool WaitAndDequeue(T& value){
+    std::unique_lock lk(m_);
+    cond_.wait(lk,[&](){return !d_.empty() || is_closed_.load();});
+    if(d_.empty()) return false;
+    value=d_.front();
+    d_.pop_front();
+    return true;
+  }
+
+  void close(){
+    is_closed_.store(true);
+    cond_.notify_all();
+  }
+    
+};
 
 class ThreadPool {
 public:
-    ThreadPool(size_t thread_count) : workers_(thread_count), queues_(thread_count) {
+    ThreadPool(size_t thread_count) : workers_(thread_count){
         for (size_t i = 0; i < thread_count; ++i) {
-            workers_[i] = std::thread([this, i] { work(i); });
+            workers_[i] = std::thread([this,i] { work(); });
         }
     }
 
@@ -26,16 +56,12 @@ public:
         auto task = std::make_shared<std::packaged_task<return_type()>>(std::bind(std::forward<F>(f), std::forward<Args>(args)...));
         std::future<return_type> res = task->get_future(); 
 
-        // add job to per thread job queue
-        auto index = next_queue_.fetch_add(1) % queues_.size();
-        queues_[index].enqueue([task]() { (*task)(); });
+        Jobqueue.Enqueue([task](){(*task)();});
         return res;
     }
 
     void stop() {
-        for (auto& queue : queues_) {
-            queue.enqueue(nullptr);
-        }
+        Jobqueue.close();
         for (auto& worker : workers_) {
             if (worker.joinable()) {
                 worker.join();
@@ -46,46 +72,18 @@ public:
 private:
     using Task = std::function<void()>;
 
-    void work(size_t index) {
-        moodycamel::ConsumerToken token(queues_[index]);
-        // int steal_count = 0;
+    void work() {
         while (true) {
             Task task;
-            if (queues_[index].try_dequeue(token, task)) {
-                if (!task) {
-                    break;
-                }
+            if (Jobqueue.WaitAndDequeue(task)) {
                 task();
-                // steal_count = 0; 
-            }
-            else {
-                
-                // job stealing
-                // bool stolen = false;
-                // for (size_t i = 1; i < queues_.size() && !stolen; ++i) {
-                //     Task stolen_task;
-                //     if (queues_[(index + i) % queues_.size()].try_dequeue(stolen_task)) {
-                //         // steal success -> run
-                //          stolen_task();
-                //          stolen = true;
-                //          steal_count = 0;
-                //     }
-                // }
-                // if (!stolen) {
-                //     ++steal_count;
-                //     if (steal_count > 1000) { 
-                //         // can't steal job -> sleep
-                //         std::this_thread::yield();
-                //         steal_count = 0; 
-                //     }
-                // }
-                std::this_thread::yield();
+            }else{
+                break;
             }
         }
     }
     std::vector<std::thread> workers_;
-    std::vector<moodycamel::ConcurrentQueue<Task>> queues_;
-    std::atomic<int> next_queue_{ 0 };
+    Queue<Task> Jobqueue;
 };
 
 
