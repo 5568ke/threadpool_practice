@@ -48,7 +48,7 @@ private:
 
     void work(size_t index) {
         moodycamel::ConsumerToken token(queues_[index]);
-        int steal_count = 0;
+        // int steal_count = 0;
         while (true) {
             Task task;
             if (queues_[index].try_dequeue(token, task)) {
@@ -56,29 +56,30 @@ private:
                     break;
                 }
                 task();
-                steal_count = 0; 
+                // steal_count = 0; 
             }
             else {
                 
                 // job stealing
-                bool stolen = false;
-                for (size_t i = 1; i < queues_.size() && !stolen; ++i) {
-                    Task stolen_task;
-                    if (queues_[(index + i) % queues_.size()].try_dequeue(stolen_task)) {
-                        // steal success -> run
-                         stolen_task();
-                         stolen = true;
-                         steal_count = 0;
-                    }
-                }
-                if (!stolen) {
-                    ++steal_count;
-                    if (steal_count > 1000) { 
-                        // can't steal job -> sleep
-                        std::this_thread::yield();
-                        steal_count = 0; 
-                    }
-                }
+                // bool stolen = false;
+                // for (size_t i = 1; i < queues_.size() && !stolen; ++i) {
+                //     Task stolen_task;
+                //     if (queues_[(index + i) % queues_.size()].try_dequeue(stolen_task)) {
+                //         // steal success -> run
+                //          stolen_task();
+                //          stolen = true;
+                //          steal_count = 0;
+                //     }
+                // }
+                // if (!stolen) {
+                //     ++steal_count;
+                //     if (steal_count > 1000) { 
+                //         // can't steal job -> sleep
+                //         std::this_thread::yield();
+                //         steal_count = 0; 
+                //     }
+                // }
+                std::this_thread::yield();
             }
         }
     }
